@@ -1,7 +1,7 @@
 <template>
   <h1>Note List</h1>
   <div class="note-list-header">
-    <button class="add-note-btn" @click="addNote">+ Add Note</button>
+    <button class="add-note-btn" @click="openAddModal">+ Add Note</button>
   </div>
   <ul>
     <li v-for="note in notes" :key="note.id" class="note-item">
@@ -17,15 +17,26 @@
         </div>
       </div>
       <div class="note-actions">
-        <button @click="editNote(note.id)">Edit</button>
+        <button @click="openEditModal(note)">Edit</button>
         <button @click="deleteNote(note.id)">Delete</button>
       </div>
     </li>
   </ul>
+  
+  <!-- Note Modal for Add/Edit -->
+  <NoteModal
+    v-if="showModal"
+    :show="showModal"
+    :form="form"
+    :isEdit="isEdit"
+    @close="closeModal"
+    @submit="handleModalSubmit"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import NoteModal from './NoteModal.vue';
 
 const defaultSvg = 'data:image/svg+xml;utf8,<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="60" fill="%23e0e0e0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="12" fill="%23777">No Image</text></svg>';
 
@@ -35,16 +46,64 @@ const notes = ref([
   { id: 3, title: 'Third Note', content: 'This is the third note.', image: 'https://via.placeholder.com/60' },
 ]);
 
-function editNote(noteId: number) {
-  alert(`Edit note with id: ${noteId}`);
+const showModal = ref(false);
+const isEdit = ref(false);
+const editId = ref<number|null>(null);
+
+const form = ref({
+  title: '',
+  content: '',
+  image: ''
+});
+
+function openAddModal() {
+  isEdit.value = false;
+  form.value = { title: '', content: '', image: '' };
+  showModal.value = true;
+  editId.value = null;
+}
+
+function openEditModal(note: { id: number; title: string; content: string; image?: string }) {
+  isEdit.value = true;
+  form.value = {
+    title: note.title,
+    content: note.content,
+    image: note.image || ''
+  };
+  showModal.value = true;
+  editId.value = note.id;
+}
+
+function closeModal() {
+  showModal.value = false;
+  form.value = { title: '', content: '', image: '' };
+  editId.value = null;
+}
+
+function handleModalSubmit(newNote: { title: string; content: string; image: string }) {
+  if (isEdit.value && editId.value !== null) {
+    // Edit existing note
+    const idx = notes.value.findIndex(n => n.id === editId.value);
+    if (idx !== -1) {
+      notes.value[idx] = {
+        ...notes.value[idx],
+        ...newNote,
+        image: newNote.image || undefined
+      };
+    }
+  } else {
+    // Add new note
+    notes.value.push({
+      id: Date.now(),
+      ...newNote,
+      image: newNote.image || undefined
+    });
+  }
+  closeModal();
 }
 
 function deleteNote(noteId: number) {
   notes.value = notes.value.filter(note => note.id !== noteId);
-}
-
-function addNote() {
-  alert('Add Note clicked!');
 }
 </script>
 
@@ -147,5 +206,97 @@ function addNote() {
 }
 .add-note-btn:hover {
   background: #369870;
+}
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 2rem;
+  min-width: 320px;
+  max-width: 90vw;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.12);
+}
+.form-group {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+.form-group label {
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+.form-group input,
+.form-group textarea {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 15px;
+}
+.form-group textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+.cancel-btn {
+  padding: 8px 18px;
+  font-size: 15px;
+  border: none;
+  border-radius: 4px;
+  background: #eee;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.cancel-btn:hover {
+  background: #ddd;
+}
+.form-group label.left-label {
+  text-align: left;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  display: block;
+}
+.form-group input[type="file"] {
+  display: none;
+}
+
+.custom-file-label {
+  display: inline-block;
+  padding: 8px 16px;
+  background: #f0f0f0;
+  color: #333;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background 0.2s, border 0.2s;
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.custom-file-label:hover {
+  background: #e0e0e0;
+  border-color: #42b883;
+}
+
+.selected-file-name {
+  display: block;
+  margin-top: 6px;
+  color: #666;
+  font-size: 13px;
+  word-break: break-all;
 }
 </style>
