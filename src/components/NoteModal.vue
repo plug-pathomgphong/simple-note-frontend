@@ -1,8 +1,8 @@
 <template>
-  <div class="modal-overlay" @click.self="onClose">
+  <div class="modal-overlay" >
     <div class="modal">
       <h2>{{ isEdit ? 'Edit Note' : 'Add Note' }}</h2>
-      <form @submit.prevent="onSubmit">
+      <form @submit.prevent="handleModalSubmit">
         <div class="form-group">
           <label for="title" class="left-label">Title</label>
           <input id="title" v-model="localForm.title" required />
@@ -24,9 +24,12 @@
           />
           <span v-if="selectedFileName" class="selected-file-name">{{ selectedFileName }}</span>
         </div>
+        <div v-if="loading" class="modal-loading">
+          <span class="loader"></span> Processing...
+        </div>
         <div class="modal-actions">
-          <button type="submit" class="add-note-btn">{{ isEdit ? 'Save' : 'Add' }}</button>
-          <button type="button" class="cancel-btn" @click="onClose">Cancel</button>
+          <button type="submit" class="add-note-btn" :disabled="loading">{{ isEdit ? 'Save' : 'Add' }}</button>
+          <button type="button" class="cancel-btn" @click="() => onClose()" :disabled="loading">Cancel</button>
         </div>
       </form>
     </div>
@@ -38,23 +41,26 @@ import { ref, watch, defineEmits } from 'vue';
 
 const props = defineProps<{
   show: boolean,
-  form: { title: string; content: string; image: string },
+  form: { id?: string | number; title: string; content: string; image: File | string },
   isEdit?: boolean
 }>();
 const emit = defineEmits(['close', 'submit']);
 
-const localForm = ref({ title: '', content: '', image: '' });
+const localForm = ref<{ title: string; content: string; image: string | File }>({ title: '', content: '', image: '' });
 const selectedFileName = ref('');
+const loading = ref(false);
 
 watch(() => props.form, (val) => {
   localForm.value = { ...val };
   selectedFileName.value = '';
 }, { immediate: true });
 
-function onClose() {
-  emit('close');
-  localForm.value = { title: '', content: '', image: '' };
-  selectedFileName.value = '';
+function onClose(success = false) {
+  if (!loading.value) {
+    emit('close', success);
+    localForm.value = { title: '', content: '', image: '' };
+    selectedFileName.value = '';
+  }
 }
 
 function onFileChange(event: Event) {
@@ -62,20 +68,48 @@ function onFileChange(event: Event) {
   const file = target.files && target.files[0];
   if (file) {
     selectedFileName.value = file.name;
-    const reader = new FileReader();
-    reader.onload = e => {
-      localForm.value.image = (e.target?.result as string) || '';
-    };
-    reader.readAsDataURL(file);
+    localForm.value.image = file;
   } else {
     selectedFileName.value = '';
     localForm.value.image = '';
   }
 }
 
-function onSubmit() {
-  emit('submit', { ...localForm.value });
-  onClose();
+
+async function handleModalSubmit() {
+  const formData = new FormData();
+  formData.append('title', localForm.value.title);
+  formData.append('content', localForm.value.content);
+  if (localForm.value.image) {
+    formData.append('file', localForm.value.image);
+  }
+  try {
+    loading.value = true;
+    console.log('Submitting form:', localForm.value, props.form.id);
+    // ...your API call here...
+    if (props.isEdit && props.form.id) {
+      // PATCH
+      await fetch(`http://localhost:3000/notes/${props.form.id}`, {
+        method: 'PATCH',
+        body: formData,
+      });
+    } else {
+      // POST
+      await fetch('http://localhost:3000/notes', {
+        method: 'POST',
+        body: formData,
+      });
+    }
+
+    // await fetchNotes(); // Uncomment if you have a fetchNotes function
+    loading.value = false;
+    onClose(true); // Only close if successful
+  } catch (e) {
+    console.error(e);
+    // Handle error, e.g., show a notification
+  } finally {
+    loading.value = false;
+  }
 }
 </script>
 
@@ -177,5 +211,25 @@ function onSubmit() {
 }
 .cancel-btn:hover {
   background: #ddd;
+}
+.modal-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #42b883;
+  font-size: 15px;
+  margin-bottom: 1rem;
+}
+.loader {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #42b883;
+  border-top: 3px solid #e0e0e0;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>
