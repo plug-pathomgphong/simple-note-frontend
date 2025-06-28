@@ -39,6 +39,8 @@
 <script setup lang="ts">
 import { ref, watch, defineEmits } from 'vue';
 
+const BASE_API = import.meta.env.VITE_BASE_API || 'http://localhost:3000';
+
 const props = defineProps<{
   show: boolean,
   form: { id?: string | number; title: string; content: string; image: File | string },
@@ -89,13 +91,13 @@ async function handleModalSubmit() {
     // ...your API call here...
     if (props.isEdit && props.form.id) {
       // PATCH
-      await fetch(`http://localhost:3000/notes/${props.form.id}`, {
+      await fetch(`${BASE_API}/notes/${props.form.id}`, {
         method: 'PATCH',
         body: formData,
       });
     } else {
       // POST
-      await fetch('http://localhost:3000/notes', {
+      await fetch(`${BASE_API}/notes`, {
         method: 'POST',
         body: formData,
       });

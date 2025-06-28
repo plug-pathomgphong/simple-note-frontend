@@ -75,11 +75,14 @@ const errorMessage = ref('');
 const modalError = ref('');
 const confirmDeleteNote = ref<{ id: number; title: string } | null>(null);
 
+// Base API URL
+const BASE_API = import.meta.env.VITE_BASE_API || 'http://localhost:3000';
+
 // Fetch notes from API
 async function fetchNotes() {
   errorMessage.value = '';
   try {
-    const res = await fetch('http://localhost:3000/notes?page=' + pagination.value.page + '&limit=' + pagination.value.limit);
+    const res = await fetch(`${BASE_API}/notes?page=${pagination.value.page}&limit=${pagination.value.limit}`);
     if (!res.ok) throw new Error('Failed to fetch notes');
     const data = await res.json();
     notes.value = data.items.map((note: any) => ({
@@ -152,7 +155,7 @@ async function handleModalSubmit(newNote: { title: string; content: string; imag
   if (isEdit.value && editId.value !== null) {
     // Edit existing note
     try {
-      const res = await fetch(`http://localhost:3000/notes/${editId.value}`, {
+      const res = await fetch(`${BASE_API}/notes/${editId.value}`, {
         method: 'PATCH',
         body: formData
       });
@@ -169,7 +172,7 @@ async function handleModalSubmit(newNote: { title: string; content: string; imag
   } else {
     // Add new note
     try {
-      const res = await fetch('http://localhost:3000/notes', {
+      const res = await fetch(`${BASE_API}/notes`, {
         method: 'POST',
         body: formData
       });
@@ -200,7 +203,7 @@ async function deleteNoteConfirmed() {
   if (!confirmDeleteNote.value) return;
   errorMessage.value = '';
   try {
-    const res = await fetch(`http://localhost:3000/notes/${confirmDeleteNote.value.id}`, { method: 'DELETE' });
+    const res = await fetch(`${BASE_API}/notes/${confirmDeleteNote.value.id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete note');
     await fetchNotes();
   } catch (e: any) {
