@@ -31,6 +31,10 @@ jobs:
             exit 1
           fi
 
+      - name: Generate runtime config.json
+        run: |
+          echo "{\"VITE_BASE_API\": \"http://localhost:3000\"}" > dist/config.json
+          
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
