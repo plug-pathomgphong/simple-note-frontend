@@ -1,11 +1,16 @@
 name: Deploy Frontend to S3 + CloudFront
 
 on:
-  push:
-    branches:
-      - main
-      
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "เลือก environment ที่จะ deploy"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - dev
+          - production
   
 jobs:
   build-and-deploy:
