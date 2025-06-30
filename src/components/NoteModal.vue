@@ -38,9 +38,9 @@
 
 <script setup lang="ts">
 import { ref, watch, defineEmits } from 'vue';
+import { getBaseUrl } from '@/services/api';
 
-const BASE_API = import.meta.env.VITE_BASE_API || 'http://localhost:3000';
-
+const BASE_API = getBaseUrl();
 const props = defineProps<{
   show: boolean,
   form: { id?: string | number; title: string; content: string; image: File | string },
