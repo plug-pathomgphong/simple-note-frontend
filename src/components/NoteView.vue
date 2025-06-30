@@ -50,6 +50,7 @@
 import { ref, onMounted, watch } from 'vue';
 import NoteModal from './NoteModal.vue';
 import Pagination from './Pagination.vue';
+import { getBaseUrl } from '@/services/api';
 
 const defaultSvg = 'data:image/svg+xml;utf8,<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="60" fill="%23e0e0e0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="12" fill="%23777">No Image</text></svg>';
 
@@ -76,7 +77,7 @@ const modalError = ref('');
 const confirmDeleteNote = ref<{ id: number; title: string } | null>(null);
 
 // Base API URL
-const BASE_API = import.meta.env.VITE_BASE_API || 'http://localhost:3000';
+const BASE_API = getBaseUrl();
 
 // Fetch notes from API
 async function fetchNotes() {
