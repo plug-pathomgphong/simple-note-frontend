@@ -33,7 +33,7 @@ jobs:
 
       - name: Generate runtime config.json
         run: |
-          echo "{\"VITE_BASE_API\": \"http://localhost:3000\"}" > dist/config.json
+          echo "{\"VITE_BASE_API\": \"${{ secrets.API_URL }}\" }" > dist/config.json
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
