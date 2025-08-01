@@ -4,24 +4,24 @@
   <Pagination v-model="pagination.page" :totalPages="pagination.totalPages" />
 
   <div class="note-list-header">
-    <button class="add-note-btn" @click="openAddModal">+ Add Note</button>
+    <button class="add-note-btn" @click="openAddModal" data-testid="add-note-btn">+ Add Note</button>
   </div>
-  <div v-if="errorMessage" class="error-message">
+  <div v-if="errorMessage" class="error-message"  data-testid="error-message">
     {{ errorMessage }}
   </div>
-  <div class="note-list-wrapper">
-    <ul>
-      <li v-for="note in notes" :key="note.id" class="note-item">
-        <div class="note-content">
-          <img :src="note.image || defaultSvg" alt="Note Image" class="note-image" />
+  <div class="note-list-wrapper" data-testid="note-list-wrapper">
+    <ul data-testid="note-list">
+      <li v-for="note in notes" :key="note.id" class="note-item" data-testid="note-item">
+        <div class="note-content" data-testid="note-content">
+          <img :src="note.image || defaultSvg" alt="Note Image" class="note-image" data-testid="note-image" />
           <div class="note-text">
             <h3>{{ note.title }}</h3>
             <p>{{ note.content }}</p>
           </div>
         </div>
         <div class="note-actions">
-          <button @click="openEditModal(note)">Edit</button>
-          <button @click="showDeleteConfirm(note)">Delete</button>
+          <button @click="openEditModal(note)" data-testid="edit-note-btn">Edit</button>
+          <button @click="showDeleteConfirm(note)" data-testid="delete-note-btn">Delete</button>
         </div>
       </li>
     </ul>
@@ -32,13 +32,13 @@
     @submit="handleModalSubmit" />
 
   <!-- Confirm Delete Popup -->
-  <div v-if="confirmDeleteNote" class="modal-overlay" style="z-index:2000" @click.self="cancelDelete">
-    <div class="modal" style="max-width:340px;text-align:center;">
-      <h3>Confirm Delete</h3>
-      <p>Are you sure you want to delete <b>{{ confirmDeleteNote.title }}</b>?</p>
+  <div v-if="confirmDeleteNote" class="modal-overlay" style="z-index:2000" @click.self="cancelDelete" data-testid="confirm-delete-modal">
+    <div class="modal" style="max-width:340px;text-align:center;" data-testid="confirm-delete-modal-content">
+      <h3 data-testid="confirm-delete-modal-title">Confirm Delete</h3>
+      <p data-testid="confirm-delete-modal-message">Are you sure you want to delete <b>{{ confirmDeleteNote.title }}</b>?</p>
       <div class="modal-actions" style="justify-content:center;">
-        <button class="add-note-btn" @click="deleteNoteConfirmed">Yes, Delete</button>
-        <button class="cancel-btn" @click="cancelDelete">Cancel</button>
+        <button class="delete-btn" @click="deleteNoteConfirmed" data-testid="confirm-delete-btn">Yes, Delete</button>
+        <button class="cancel-btn" @click="cancelDelete" data-testid="cancel-delete-btn">Cancel</button>
       </div>
     </div>
   </div>

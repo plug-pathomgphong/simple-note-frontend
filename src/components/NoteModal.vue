@@ -1,25 +1,28 @@
 <template>
-  <div class="modal-overlay" >
-    <div class="modal">
-      <h2>{{ isEdit ? 'Edit Note' : 'Add Note' }}</h2>
-      <form @submit.prevent="handleModalSubmit">
+  <div class="modal-overlay" data-testid="modal-overlay">
+    <div class="modal" data-testid="modal">
+      <h2 data-testid="modal-title">{{ isEdit ? 'Edit Note' : 'Add Note' }}</h2>
+      <form data-testid="modal-form" @submit.prevent="handleModalSubmit">
         <div class="form-group">
-          <label for="title" class="left-label">Title</label>
-          <input id="title" v-model="localForm.title" required />
+          <label for="title" class="left-label" data-testid="title-label">Title</label>
+          <input id="title" name="title" data-testid="title" placeholder="Enter title" v-model="localForm.title" required />
+          <span v-if="validationErrors.title" class="error-message">{{ validationErrors.title }}</span>
         </div>
         <div class="form-group">
-          <label for="content" class="left-label">Content</label>
-          <textarea id="content" v-model="localForm.content" required></textarea>
+          <label for="content" class="left-label" data-testid="content-label">Content</label>
+          <textarea id="content" name="content" data-testid="content" placeholder="Enter content" v-model="localForm.content" required></textarea>
+          <span v-if="validationErrors.content" class="error-message">{{ validationErrors.content }}</span>
         </div>
         <div class="form-group">
-          <label for="image" class="left-label">Image (optional)</label>
-          <label class="custom-file-label" for="image">
+          <label for="image" class="left-label" data-testid="image-label">Image (optional)</label>
+          <label class="custom-file-label" for="image" data-testid="image-label-text">
             <span>Choose Image</span>
           </label>
           <input
             id="image"
             type="file"
             accept="image/*"
+            data-testid="image"
             @change="onFileChange"
           />
           <span v-if="selectedFileName" class="selected-file-name">{{ selectedFileName }}</span>
@@ -28,8 +31,8 @@
           <span class="loader"></span> Processing...
         </div>
         <div class="modal-actions">
-          <button type="submit" class="add-note-btn" :disabled="loading">{{ isEdit ? 'Save' : 'Add' }}</button>
-          <button type="button" class="cancel-btn" @click="() => onClose()" :disabled="loading">Cancel</button>
+          <button type="submit" class="add-note-btn" data-testid="submit-note-btn" :disabled="loading">{{ isEdit ? 'Save' : 'Add' }}</button>
+          <button type="button" class="cancel-btn" data-testid="cancel-note-btn" @click="() => onClose()" :disabled="loading">Cancel</button>
         </div>
       </form>
     </div>
@@ -51,10 +54,12 @@ const emit = defineEmits(['close', 'submit']);
 const localForm = ref<{ title: string; content: string; image: string | File }>({ title: '', content: '', image: '' });
 const selectedFileName = ref('');
 const loading = ref(false);
+const validationErrors = ref<{ title?: string; content?: string }>({});
 
 watch(() => props.form, (val) => {
   localForm.value = { ...val };
   selectedFileName.value = '';
+  validationErrors.value = {}; // Clear errors on form update
 }, { immediate: true });
 
 function onClose(success = false) {
@@ -62,6 +67,7 @@ function onClose(success = false) {
     emit('close', success);
     localForm.value = { title: '', content: '', image: '' };
     selectedFileName.value = '';
+    validationErrors.value = {}; // Clear errors on close
   }
 }
 
@@ -77,8 +83,27 @@ function onFileChange(event: Event) {
   }
 }
 
+function validateForm() {
+  const errors: { title?: string; content?: string } = {};
+  if (!localForm.value.title || localForm.value.title.trim().length === 0) {
+    errors.title = 'Title is required.';
+  } else if (localForm.value.title.length > 100) {
+    errors.title = 'Title must be less than 100 characters.';
+  }
+  if (!localForm.value.content || localForm.value.content.trim().length === 0) {
+    errors.content = 'Content is required.';
+  } else if (localForm.value.content.length > 1000) {
+    errors.content = 'Content must be less than 1000 characters.';
+  }
+  validationErrors.value = errors;
+  return Object.keys(errors).length === 0;
+}
+
 
 async function handleModalSubmit() {
+  if (!validateForm()) {
+    return;
+  }
   const formData = new FormData();
   formData.append('title', localForm.value.title);
   formData.append('content', localForm.value.content);
@@ -233,5 +258,11 @@ async function handleModalSubmit() {
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+.error-message {
+  color: #e53e3e;
+  font-size: 13px;
+  margin-top: 4px;
+  display: block;
 }
 </style>
