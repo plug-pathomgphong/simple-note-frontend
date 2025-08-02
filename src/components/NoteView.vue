@@ -10,7 +10,10 @@
     {{ errorMessage }}
   </div>
   <div class="note-list-wrapper" data-testid="note-list-wrapper">
-    <ul data-testid="note-list">
+    <div v-if="notes.length === 0" class="no-notes-message" data-testid="no-notes-message">
+      No notes available. Click "Add Note" to create one.
+    </div>
+    <ul v-else class="note-list" data-testid="note-list">
       <li v-for="note in notes" :key="note.id" class="note-item" data-testid="note-item">
         <div class="note-content" data-testid="note-content">
           <img :src="note.image || defaultSvg" alt="Note Image" class="note-image" data-testid="note-image" />
@@ -86,18 +89,21 @@ async function fetchNotes() {
     const res = await fetch(`${BASE_API}/notes?page=${pagination.value.page}&limit=${pagination.value.limit}`);
     if (!res.ok) throw new Error('Failed to fetch notes');
     const data = await res.json();
-    notes.value = data.items.map((note: any) => ({
-      id: note.id,
-      title: note.title,
-      content: note.content,
-      image: note.attachmentUrl || ''
-    }));
+    notes.value = Array.isArray(data.items) && data.items.length > 0
+      ? data.items.map((note: any) => ({
+        id: note.id,
+        title: note.title,
+        content: note.content,
+        image: note.attachmentUrl || ''
+      }))
+      : [];
     pagination.value = {
-      page: data.meta.page || 1,
-      limit: data.meta.limit || 10,
-      totalItems: data.meta.totalItems || 0,
-      totalPages: data.meta.totalPages || 0
+      page: data?.meta?.page || 1,
+      limit: data?.meta?.limit || 10,
+      totalItems: data?.meta?.totalItems || 0,
+      totalPages: data?.meta?.totalPages || 0
     };
+    
   } catch (e: any) {
     errorMessage.value = e.message || 'Failed to fetch notes.';
   }
@@ -206,6 +212,9 @@ async function deleteNoteConfirmed() {
   try {
     const res = await fetch(`${BASE_API}/notes/${confirmDeleteNote.value.id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete note');
+    if (notes.value.length === 1 && pagination.value.page > 1) {
+      pagination.value.page--; // Adjust page if last note is deleted
+    }
     await fetchNotes();
   } catch (e: any) {
     errorMessage.value = e.message || 'Failed to delete note.';
@@ -295,6 +304,14 @@ watch(() => pagination.value.page, (newPage, oldPage) => {
   /* Ensures space for pagination at the bottom */
 }
 
+.no-notes-message {
+  text-align: center;
+  color: #777;
+  font-size: 16px;
+  margin-top: 20px;
+  background-color: #f9f9f9;
+  padding: 20px;
+}
 @media (max-width: 600px) {
   .note-item {
     flex-direction: column;
