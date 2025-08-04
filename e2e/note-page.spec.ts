@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
 
+
+test.describe('NoteView CRUD Operations ivalte', () => {
+
+})
 test.describe('NoteView CRUD Operations', () => {
   const testNote = {
     title: 'Test Note Title',
@@ -7,7 +11,7 @@ test.describe('NoteView CRUD Operations', () => {
     updatedTitle: 'Updated Test Note Title',
     updatedContent: 'Updated content text.',
   };
-
+  
   async function createNote(page, title: string, content: string) {
     await page.getByTestId('add-note-btn').click();
     await page.getByPlaceholder('Enter title').fill(title);
@@ -38,6 +42,43 @@ test.describe('NoteView CRUD Operations', () => {
   test('Note page should render', async ({ page }) => {
     await expect(page.locator('h1')).toHaveText('Note List');
   });
+
+  test('should show error when creating a note with empty title and content', async ({ page }) => {
+    
+    await page.getByTestId('add-note-btn').click();
+    await page.getByTestId('submit-note-btn').click();
+    
+    // Check for error messages
+    const titleError = page.locator('.form-group input[name="title"] + .error-message');
+    const contentError = page.locator('.form-group textarea[name="content"] + .error-message');
+    
+    await expect(titleError).toHaveText('Title is required');
+    await expect(contentError).toHaveText('Content is required');
+
+  });
+
+  test('should show error when creating a note with title longer than 100 characters', async ({ page }) => {
+    const longTitle = 'a'.repeat(101);
+    await page.getByTestId('add-note-btn').click();
+    await page.getByPlaceholder('Enter title').fill(longTitle);
+    await page.getByPlaceholder('Enter content').fill('Some content');
+    await page.getByTestId('submit-note-btn').click();
+
+    const titleError = page.locator('.form-group input[name="title"] + .error-message');
+    await expect(titleError).toHaveText('Title must be less than 100 characters');
+  });
+
+  test('should show error when creating a note with content longer than 1000 characters', async ({ page }) => {
+    const longContent = 'b'.repeat(1001);
+    await page.getByTestId('add-note-btn').click();
+    await page.getByPlaceholder('Enter title').fill('Valid Title');
+    await page.getByPlaceholder('Enter content').fill(longContent);
+    await page.getByTestId('submit-note-btn').click();
+
+    const contentError = page.locator('.form-group textarea[name="content"] + .error-message');
+    await expect(contentError).toHaveText('Content must be less than 1000 characters');
+  });
+
   test('should create, read, update, and delete a note', async ({ page }) => {
     await test.step('Create a new note', async () => {
       await createNote(page, testNote.title, testNote.content);
