@@ -167,12 +167,11 @@ watch(() => props.form, (newForm) => {
 
 // Methods
 function onClose(success = false) {
-  if (!loading.value) {
-    emit('close', success);
-    resetForm();
-    previewUrl.value = null;
-    apiError.value = null; // Clear errors on close
-  }
+  emit('close', success);
+  resetForm();
+  previewUrl.value = null;
+  apiError.value = null; // Clear errors on close
+  
 }
 
 function onFileChange(event: Event) {
@@ -201,6 +200,7 @@ async function submitForm(values: any) {
   if (values.image instanceof File) {
     formData.append('file', values.image);
   }
+
 
   try {
     loading.value = true;
