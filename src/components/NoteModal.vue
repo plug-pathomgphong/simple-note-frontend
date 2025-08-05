@@ -2,39 +2,80 @@
   <div class="modal-overlay" data-testid="modal-overlay">
     <div class="modal" data-testid="modal">
       <h2 data-testid="modal-title">{{ isEdit ? 'Edit Note' : 'Add Note' }}</h2>
+      
+      <!-- API Error Message -->
+      <div v-if="apiError" class="api-error-message" data-testid="api-error">
+        <span class="error-icon">⚠️</span>
+        {{ apiError }}
+      </div>
+      
       <form data-testid="modal-form" @submit.prevent="onSubmit">
         <div class="form-group">
-          <label for="title" class="left-label" data-testid="title-label" >Title</label>
-          <Field name="title" type="text" :validate-on-input="true" placeholder="Enter title"/>
+          <label for="title" class="left-label" data-testid="title-label">Title</label>
+          <Field 
+            name="title" 
+            type="text" 
+            :validate-on-input="true" 
+            placeholder="Enter title"
+            class="form-input"
+          />
           <ErrorMessage name="title" class="error-message"/>
         </div>
+        
         <div class="form-group">
           <label for="content" class="left-label" data-testid="content-label">Content</label>
-          <Field name="content" as="textarea" :validate-on-input="true" placeholder="Enter content"/>
+          <Field 
+            name="content" 
+            as="textarea" 
+            :validate-on-input="true" 
+            placeholder="Enter content"
+            class="form-textarea"
+          />
           <ErrorMessage name="content" class="error-message"/>
         </div>
+        
         <div class="form-group">
           <label for="image" class="left-label" data-testid="image-label">Image (optional)</label>
-
           <label class="custom-file-label" for="image" data-testid="image-label-text">
             <span>Choose Image</span>
           </label>
-          <input id="image" type="file" accept="image/*"  @change="onFileChange" />
+          <input 
+            id="image" 
+            type="file" 
+            accept="image/*"  
+            @change="onFileChange" 
+            data-testid="image-input"
+          />
           <ErrorMessage name="image" class="error-message" />
-          <div v-if="previewUrl">
+          
+          <div v-if="previewUrl" class="image-preview">
             <p>Preview:</p>
-            <img :src="previewUrl" alt="Preview" style="max-width: 200px; max-height: 200px;" />
+            <img :src="previewUrl" alt="Preview" class="preview-image" />
           </div>
         </div>
         
         <div v-if="loading" class="modal-loading">
           <span class="loader"></span> Processing...
         </div>
+        
         <div class="modal-actions">
-          <button type="submit" class="add-note-btn" data-testid="submit-note-btn" :disabled="loading || !meta.valid">{{ isEdit ?
-            'Save' : 'Add' }}</button>
-          <button type="button" class="cancel-btn" data-testid="cancel-note-btn" @click="() => onClose()"
-            :disabled="loading">Cancel</button>
+          <button 
+            type="submit" 
+            class="add-note-btn" 
+            data-testid="submit-note-btn" 
+            :disabled="loading || !meta.valid"
+          >
+            {{ isEdit ? 'Save' : 'Add' }}
+          </button>
+          <button 
+            type="button" 
+            class="cancel-btn" 
+            data-testid="cancel-note-btn" 
+            @click="() => onClose()"
+            :disabled="loading"
+          >
+            Cancel
+          </button>
         </div>
       </form>
     </div>
@@ -43,175 +84,164 @@
 
 <script setup lang="ts">
 import { ref, watch, defineEmits } from 'vue';
-import { getBaseUrl } from '@/services/api';
-import { useForm, Field, ErrorMessage  } from 'vee-validate';
+import { useForm, Field, ErrorMessage } from 'vee-validate';
 import * as yup from 'yup';
 import { toTypedSchema } from '@vee-validate/yup';
-const BASE_API = getBaseUrl();
-const props = defineProps<{
-  show: boolean,
-  form: { id?: string | number; title: string; content: string; image: File | string },
-  isEdit?: boolean
-}>();
-const emit = defineEmits(['close', 'submit']);
+import { getBaseUrl } from '@/services/api';
 
-const previewUrl = ref<string | null>(null);
-const localForm = ref<{ title: string; content: string; image: string | File }>({ title: '', content: '', image: '' });
-const selectedFileName = ref('');
-const loading = ref(false);
-const validationErrors = ref<{ title?: string; content?: string }>({});
-
-watch(() => props.form, (val) => {
-  localForm.value = { ...val };
-  selectedFileName.value = '';
-  validationErrors.value = {}; // Clear errors on form update
-}, { immediate: true });
-
-function onClose(success = false) {
-  if (!loading.value) {
-    emit('close', success);
-    localForm.value = { title: '', content: '', image: '' };
-    selectedFileName.value = '';
-    validationErrors.value = {}; // Clear errors on close
-  }
+// Types
+interface NoteForm {
+  id?: string | number;
+  title: string;
+  content: string;
+  image: File | string;
 }
 
-const schema = toTypedSchema(
+interface Props {
+  show: boolean;
+  form: NoteForm;
+  isEdit?: boolean;
+}
+
+// Constants
+const BASE_API = getBaseUrl();
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
+// Props and emits
+const props = defineProps<Props>();
+const emit = defineEmits<{
+  close: [success: boolean];
+  submit: [data: any];
+}>();
+
+// Reactive state
+const previewUrl = ref<string | null>(null);
+const loading = ref(false);
+const apiError = ref<string | null>(null);
+
+// Validation schema
+const validationSchema = toTypedSchema(
   yup.object({
-    title: yup.string().required('Title is required').min(3, 'Title must be at least 3 character').max(100, 'Title must be less than 100 characters'),
-    content: yup.string().required('Content is required')
+    title: yup
+      .string()
+      .required('Title is required')
+      .min(3, 'Title must be at least 3 characters')
+      .max(100, 'Title must be less than 100 characters'),
+    content: yup
+      .string()
+      .required('Content is required')
       .min(10, 'Content must be at least 10 characters')
       .max(1000, 'Content must be less than 1000 characters'),
     image: yup
-    .mixed()
-    .notRequired()
-    .test('fileType', 'Only image files are allowed', (value) => {
-      if (!value) return true 
-      return value instanceof File && value.type.startsWith('image/')
-    })
-    .test('fileSize', 'Image is too large (max 2MB)', (value) => {
-      if (!value) return true 
-      return value instanceof File ? value.size <= 2 * 1024 * 1024 : true
-    })
+      .mixed()
+      .notRequired()
+      .test('fileType', 'Only image files are allowed', (value) => {
+        if (!value) return true;
+        return value instanceof File && value.type.startsWith('image/');
+      })
+      .test('fileSize', 'Image is too large (max 2MB)', (value) => {
+        if (!value) return true;
+        return value instanceof File ? value.size <= MAX_FILE_SIZE : true;
+      })
   })
 );
 
-const { handleSubmit, setFieldValue, meta } = useForm({
-  validationSchema: schema,
+// Form setup
+const { handleSubmit, setFieldValue, meta, resetForm } = useForm({
+  validationSchema,
+  initialValues: {
+    title: '',
+    content: '',
+    image: undefined
+  }
 });
 
+// Watchers
+watch(() => props.form, (newForm) => {
+  setFieldValue('title', newForm.title);
+  setFieldValue('content', newForm.content);
+  setFieldValue('image', newForm.image);
+  previewUrl.value = null;
+  apiError.value = null; // Clear API errors when form changes
+}, { immediate: true });
+
+// Methods
+function onClose(success = false) {
+  if (!loading.value) {
+    emit('close', success);
+    resetForm();
+    previewUrl.value = null;
+    apiError.value = null; // Clear errors on close
+  }
+}
 
 function onFileChange(event: Event) {
   const target = event.target as HTMLInputElement;
-  const file = target.files && target.files[0];
+  const file = target.files?.[0];
+  
   if (file) {
-    setFieldValue('image', file)
-    selectedFileName.value = file.name;
-    localForm.value.image = file;
-    // Check if the file is an image before generating preview
-    if (!file.type.startsWith('image/')) {
+    setFieldValue('image', file);
+    
+    if (file.type.startsWith('image/')) {
+      previewUrl.value = URL.createObjectURL(file);
+    } else {
       previewUrl.value = null;
-      return;
     }
-    previewUrl.value = URL.createObjectURL(file)
   } else {
-    selectedFileName.value = '';
-    localForm.value.image = '';
+    setFieldValue('image', undefined);
     previewUrl.value = null;
   }
 }
 
-const onSubmit = handleSubmit(async values => {
-  alert(JSON.stringify(values, null, 2));
+async function submitForm(values: any) {
   const formData = new FormData();
   formData.append('title', values.title);
   formData.append('content', values.content);
+  
   if (values.image instanceof File) {
     formData.append('file', values.image);
   }
+
   try {
     loading.value = true;
-    console.log('Submitting form:', localForm.value, props.form.id);
-    // ...your API call here...
-    if (props.isEdit && props.form.id) {
-      // PATCH
-      await fetch(`${BASE_API}/notes/${props.form.id}`, {
-        method: 'PATCH',
-        body: formData,
-      });
-    } else {
-      // POST
-      await fetch(`${BASE_API}/notes`, {
-        method: 'POST',
-        body: formData,
-      });
+    apiError.value = null; // Clear previous errors
+    
+    const url = props.isEdit && props.form.id 
+      ? `${BASE_API}/notes/${props.form.id}`
+      : `${BASE_API}/notes`;
+    
+    const method = props.isEdit ? 'PATCH' : 'POST';
+    
+    const response = await fetch(url, {
+      method,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Failed to ${props.isEdit ? 'update' : 'create'} note.`;
+      
+      // Try to get error details from response
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } catch {
+        // If response is not JSON, use status text
+        errorMessage = response.statusText || errorMessage;
+      }
+      
+      throw new Error(errorMessage);
     }
 
-    // await fetchNotes(); // Uncomment if you have a fetchNotes function
-    loading.value = false;
-    onClose(true); // Only close if successful
-  } catch (e) {
-    console.error(e);
-    // Handle error, e.g., show a notification
+    onClose(true);
+  } catch (error) {
+    console.error('Error submitting form:', error);
+    apiError.value = error instanceof Error ? error.message : 'An unexpected error occurred.';
   } finally {
     loading.value = false;
   }
-});
-// function validateForm() {
-//   const errors: { title?: string; content?: string } = {};
-//   if (!localForm.value.title || localForm.value.title.trim().length === 0) {
-//     errors.title = 'Title is required';
-//   } else if (localForm.value.title.length > 100) {
-//     errors.title = 'Title must be less than 100 characters';
-//   }
-//   if (!localForm.value.content || localForm.value.content.trim().length === 0) {
-//     errors.content = 'Content is required';
-//   } else if (localForm.value.content.length > 1000) {
-//     errors.content = 'Content must be less than 1000 characters';
-//   }
-//   validationErrors.value = errors;
-//   return Object.keys(errors).length === 0;
-// }
+}
 
-
-// async function handleModalSubmit() {
-//   if (!validateForm()) {
-//     return;
-//   }
-//   const formData = new FormData();
-//   formData.append('title', localForm.value.title);
-//   formData.append('content', localForm.value.content);
-//   if (localForm.value.image) {
-//     formData.append('file', localForm.value.image);
-//   }
-//   try {
-//     loading.value = true;
-//     console.log('Submitting form:', localForm.value, props.form.id);
-//     // ...your API call here...
-//     if (props.isEdit && props.form.id) {
-//       // PATCH
-//       await fetch(`${BASE_API}/notes/${props.form.id}`, {
-//         method: 'PATCH',
-//         body: formData,
-//       });
-//     } else {
-//       // POST
-//       await fetch(`${BASE_API}/notes`, {
-//         method: 'POST',
-//         body: formData,
-//       });
-//     }
-
-//     // await fetchNotes(); // Uncomment if you have a fetchNotes function
-//     loading.value = false;
-//     onClose(true); // Only close if successful
-//   } catch (e) {
-//     console.error(e);
-//     // Handle error, e.g., show a notification
-//   } finally {
-//     loading.value = false;
-//   }
-// }
+const onSubmit = handleSubmit(submitForm);
 </script>
 
 <style scoped>
@@ -237,6 +267,23 @@ const onSubmit = handleSubmit(async values => {
   box-shadow: 0 4px 32px rgba(0, 0, 0, 0.12);
 }
 
+.api-error-message {
+  background: #fed7d7;
+  border: 1px solid #feb2b2;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 1rem;
+  color: #c53030;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-icon {
+  font-size: 16px;
+}
+
 .form-group {
   margin-bottom: 1rem;
   display: flex;
@@ -250,15 +297,15 @@ const onSubmit = handleSubmit(async values => {
   display: block;
 }
 
-.form-group input,
-.form-group textarea {
+.form-input,
+.form-textarea {
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 15px;
 }
 
-.form-group textarea {
+.form-textarea {
   min-height: 60px;
   resize: vertical;
 }
@@ -267,11 +314,12 @@ const onSubmit = handleSubmit(async values => {
   display: none;
 }
 
-.form-group span.error-message {
-  text-align: left;
+.error-message {
   color: #e53e3e;
   font-size: 13px;
   margin-top: 4px;
+  display: block;
+  text-align: left;
 }
 
 .custom-file-label {
@@ -293,12 +341,15 @@ const onSubmit = handleSubmit(async values => {
   border-color: #42b883;
 }
 
-.selected-file-name {
-  display: block;
-  margin-top: 6px;
-  color: #666;
-  font-size: 13px;
-  word-break: break-all;
+.image-preview {
+  margin-top: 8px;
+}
+
+.preview-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
 }
 
 .modal-actions {
@@ -319,8 +370,13 @@ const onSubmit = handleSubmit(async values => {
   transition: background 0.2s;
 }
 
-.add-note-btn:hover {
+.add-note-btn:hover:not(:disabled) {
   background: #369870;
+}
+
+.add-note-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .cancel-btn {
@@ -334,8 +390,13 @@ const onSubmit = handleSubmit(async values => {
   transition: background 0.2s;
 }
 
-.cancel-btn:hover {
+.cancel-btn:hover:not(:disabled) {
   background: #ddd;
+}
+
+.cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .modal-loading {
@@ -361,12 +422,5 @@ const onSubmit = handleSubmit(async values => {
   to {
     transform: rotate(360deg);
   }
-}
-
-.error-message {
-  color: #e53e3e;
-  font-size: 13px;
-  margin-top: 4px;
-  display: block;
 }
 </style>
