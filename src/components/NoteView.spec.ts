@@ -3,8 +3,8 @@ import { mount, flushPromises } from '@vue/test-utils';
 import NoteView from './NoteView.vue';
 
 const mockNotes = [
-  { id: 1, title: 'Note 1', content: 'Content 1', attachmentUrl: '' },
-  { id: 2, title: 'Note 2', content: 'Content 2', attachmentUrl: '' }
+  { id: 1, title: 'Note 1', content: 'Content 1', image: '' },
+  { id: 2, title: 'Note 2', content: 'Content 2', image: '' }
 ];
 
 function mockFetchSequence(responses: any[]) {
@@ -41,7 +41,7 @@ describe('NoteView.vue CRUD', () => {
     mockFetchSequence([
       { ok: true, body: { items: mockNotes, meta: { page: 1, limit: 3, totalItems: 2, totalPages: 1 } } },
       { ok: true, body: {} },
-      { ok: true, body: { items: [...mockNotes, { id: 3, title: 'New Note', content: 'New Content', attachmentUrl: '' }], meta: { page: 1, limit: 3, totalItems: 3, totalPages: 1 } } }
+      { ok: true, body: { items: [...mockNotes, { id: 3, title: 'New Note', content: 'New Content', image: '' }], meta: { page: 1, limit: 3, totalItems: 3, totalPages: 1 } } }
     ]);
     const wrapper = mount(NoteView);
     await flushPromises();
@@ -61,7 +61,7 @@ describe('NoteView.vue CRUD', () => {
     mockFetchSequence([
       { ok: true, body: { items: mockNotes, meta: { page: 1, limit: 3, totalItems: 2, totalPages: 1 } } },
       { ok: true, body: {} },
-      { ok: true, body: { items: [{ id: 1, title: 'Updated', content: 'Updated Content', attachmentUrl: '' }, mockNotes[1]], meta: { page: 1, limit: 3, totalItems: 2, totalPages: 1 } } }
+      { ok: true, body: { items: [{ id: 1, title: 'Updated', content: 'Updated Content', image: '' }, mockNotes[1]], meta: { page: 1, limit: 3, totalItems: 2, totalPages: 1 } } }
     ]);
     const wrapper = mount(NoteView);
     await flushPromises();

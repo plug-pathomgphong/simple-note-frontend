@@ -4,7 +4,7 @@
       <h2 data-testid="modal-title">{{ isEdit ? 'Edit Note' : 'Add Note' }}</h2>
       
       <!-- API Error Message -->
-      <div v-if="apiError" class="api-error-message" data-testid="api-error">
+      <div v-if="apiError" class="api-error-message" data-testid="api-error" aria-live="polite">
         <span class="error-icon">⚠️</span>
         {{ apiError }}
       </div>
@@ -18,6 +18,7 @@
             :validate-on-input="true" 
             placeholder="Enter title"
             class="form-input"
+            data-testid="title-input"
           />
           <ErrorMessage name="title" class="error-message"/>
         </div>
@@ -30,6 +31,7 @@
             :validate-on-input="true" 
             placeholder="Enter content"
             class="form-textarea"
+            data-testid="content-input"
           />
           <ErrorMessage name="content" class="error-message"/>
         </div>
@@ -46,7 +48,7 @@
             @change="onFileChange" 
             data-testid="image-input"
           />
-          <ErrorMessage name="image" class="error-message" />
+          <ErrorMessage name="image" class="error-message" data-testid="image-error" />
           
           <div v-if="previewUrl" class="image-preview">
             <p>Preview:</p>
