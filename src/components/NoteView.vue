@@ -1,44 +1,59 @@
 <template>
-  <h1>Note List</h1>
-  <!-- Pagination (top, optional) -->
-  <Pagination v-model="pagination.page" :totalPages="pagination.totalPages" />
+  <header class="note-list-header-top">
+    <h1>Note List</h1>
+    <Pagination v-model="pagination.page" :totalPages="pagination.totalPages" />
+  </header>
 
   <div class="note-list-header">
-    <button class="add-note-btn" @click="openAddModal">+ Add Note</button>
+    <button class="add-note-btn" @click="openAddModal" data-testid="add-note-btn">+ Add Note</button>
   </div>
-  <div v-if="errorMessage" class="error-message">
-    {{ errorMessage }}
+  
+  <!-- Enhanced Error Message Display -->
+  <div v-if="errorMessage" class="error-message-container" data-testid="error-message">
+    <div class="error-message">
+      
+      <div class="error-content">
+        <div class="error-text-container"><span class="error-icon">⚠️</span><p class="error-text">{{ errorMessage }}</p></div>
+        <button @click="retryFetch" class="retry-btn" data-testid="retry-btn">
+          Try Again
+        </button>
+      </div>
+    </div>
   </div>
-  <div class="note-list-wrapper">
-    <ul>
-      <li v-for="note in notes" :key="note.id" class="note-item">
-        <div class="note-content">
-          <img :src="note.image || defaultSvg" alt="Note Image" class="note-image" />
+  
+  <div class="note-list-wrapper" data-testid="note-list-wrapper">
+    <div v-if="notes.length === 0 && !errorMessage" class="no-notes-message" data-testid="no-notes-message">
+      No notes available. Click "Add Note" to create one.
+    </div>
+    <ul v-else-if="notes.length > 0" class="note-list" data-testid="note-list">
+      <li v-for="note in notes" :key="note.id" class="note-item" data-testid="note-item">
+        <div class="note-content" data-testid="note-content">
+          <img :src="note.image || defaultSvg" alt="Note Image" class="note-image" data-testid="note-image" />
           <div class="note-text">
             <h3>{{ note.title }}</h3>
             <p>{{ note.content }}</p>
           </div>
         </div>
         <div class="note-actions">
-          <button @click="openEditModal(note)">Edit</button>
-          <button @click="showDeleteConfirm(note)">Delete</button>
+          <button @click="openEditModal(note)" data-testid="edit-note-btn">Edit</button>
+          <button @click="showDeleteConfirm(note)" data-testid="delete-note-btn">Delete</button>
         </div>
       </li>
     </ul>
   </div>
 
   <!-- Note Modal for Add/Edit -->
-  <NoteModal v-if="showModal" :show="showModal" :form="form" :isEdit="isEdit" :error="modalError" @close="closeModal"
+  <NoteModal v-if="showModal" :show="showModal" :form="form" :isEdit="isEdit" @close="closeModal"
     @submit="handleModalSubmit" />
 
   <!-- Confirm Delete Popup -->
-  <div v-if="confirmDeleteNote" class="modal-overlay" style="z-index:2000" @click.self="cancelDelete">
-    <div class="modal" style="max-width:340px;text-align:center;">
-      <h3>Confirm Delete</h3>
-      <p>Are you sure you want to delete <b>{{ confirmDeleteNote.title }}</b>?</p>
+  <div v-if="confirmDeleteNote" class="modal-overlay" style="z-index:2000" @click.self="cancelDelete" data-testid="confirm-delete-modal">
+    <div class="modal" style="max-width:340px;text-align:center;" data-testid="confirm-delete-modal-content">
+      <h3 data-testid="confirm-delete-modal-title">Confirm Delete</h3>
+      <p data-testid="confirm-delete-modal-message">Are you sure you want to delete <b>{{ confirmDeleteNote.title }}</b>?</p>
       <div class="modal-actions" style="justify-content:center;">
-        <button class="add-note-btn" @click="deleteNoteConfirmed">Yes, Delete</button>
-        <button class="cancel-btn" @click="cancelDelete">Cancel</button>
+        <button class="delete-btn" @click="deleteNoteConfirmed" data-testid="confirm-delete-btn">Yes, Delete</button>
+        <button class="cancel-btn" @click="cancelDelete" data-testid="cancel-delete-btn">Cancel</button>
       </div>
     </div>
   </div>
@@ -73,34 +88,91 @@ const form = ref<{
 });
 
 const errorMessage = ref('');
-const modalError = ref('');
 const confirmDeleteNote = ref<{ id: number; title: string } | null>(null);
+const isLoading = ref(false);
 
 // Base API URL
 const BASE_API = getBaseUrl();
 
-// Fetch notes from API
+// Enhanced error handling function
+function handleApiError(error: any, operation: string): string {
+  console.error(`Error during ${operation}:`, error);
+  
+  if (error instanceof TypeError && error.message.includes('fetch')) {
+    return 'Network error. Please check your internet connection and try again.';
+  }
+  
+  if (error.status === 404) {
+    return 'The requested resource was not found.';
+  }
+  
+  if (error.status === 500) {
+    return 'Server error. Please try again later.';
+  }
+  
+  if (error.status === 401) {
+    return 'Authentication required. Please log in again.';
+  }
+  
+  if (error.status === 403) {
+    return 'You do not have permission to perform this action.';
+  }
+  
+  if (error.message) {
+    return error.message;
+  }
+  
+  return `Failed to ${operation}. Please try again.`;
+}
+
+// Fetch notes from API with enhanced error handling
 async function fetchNotes() {
   errorMessage.value = '';
+  isLoading.value = true;
+  
   try {
     const res = await fetch(`${BASE_API}/notes?page=${pagination.value.page}&limit=${pagination.value.limit}`);
-    if (!res.ok) throw new Error('Failed to fetch notes');
+    
+    if (!res.ok) {
+      let errorData;
+      try {
+        errorData = await res.json();
+      } catch {
+        errorData = { message: res.statusText || 'Failed to fetch notes' };
+      }
+      
+      throw {
+        status: res.status,
+        message: errorData.message || errorData.error || 'Failed to fetch notes'
+      };
+    }
+    
     const data = await res.json();
-    notes.value = data.items.map((note: any) => ({
-      id: note.id,
-      title: note.title,
-      content: note.content,
-      image: note.attachmentUrl || ''
-    }));
+    notes.value = Array.isArray(data.items) && data.items.length > 0
+      ? data.items.map((note: any) => ({
+        id: note.id,
+        title: note.title,
+        content: note.content,
+        image: note.attachmentUrl || ''
+      }))
+      : [];
     pagination.value = {
-      page: data.meta.page || 1,
-      limit: data.meta.limit || 10,
-      totalItems: data.meta.totalItems || 0,
-      totalPages: data.meta.totalPages || 0
+      page: data?.meta?.page || 1,
+      limit: data?.meta?.limit || 10,
+      totalItems: data?.meta?.totalItems || 0,
+      totalPages: data?.meta?.totalPages || 0
     };
-  } catch (e: any) {
-    errorMessage.value = e.message || 'Failed to fetch notes.';
+    
+  } catch (error: any) {
+    errorMessage.value = handleApiError(error, 'fetch notes');
+  } finally {
+    isLoading.value = false;
   }
+}
+
+// Retry function for failed operations
+function retryFetch() {
+  fetchNotes();
 }
 
 onMounted(fetchNotes);
@@ -110,7 +182,6 @@ function openAddModal() {
   form.value = { title: '', content: '', image: '' };
   showModal.value = true;
   editId.value = null;
-  modalError.value = '';
 }
 
 function openEditModal(note: { id: number; title: string; content: string; image?: string }) {
@@ -123,7 +194,6 @@ function openEditModal(note: { id: number; title: string; content: string; image
   };
   showModal.value = true;
   editId.value = note.id;
-  modalError.value = '';
 }
 
 function closeModal(success = false) {
@@ -131,19 +201,16 @@ function closeModal(success = false) {
   showModal.value = false;
   form.value = { title: '', content: '', image: '' };
   editId.value = null;
-  modalError.value = '';
   if (success) {
     fetchNotes(); // Refresh notes if modal was submitted successfully
   }
 }
 
-// Add or Edit note via API
+// Add or Edit note via API with enhanced error handling
 async function handleModalSubmit(newNote: { title: string; content: string; image: File | null }) {
-  modalError.value = '';
   // Simple validation
   if (!newNote.title.trim() || !newNote.content.trim()) {
-    modalError.value = 'Title and content are required.';
-    return;
+    return; // Let the modal handle validation errors
   }
 
   const formData = new FormData();
@@ -153,45 +220,58 @@ async function handleModalSubmit(newNote: { title: string; content: string; imag
     formData.append('file', newNote.image);
   }
 
-  if (isEdit.value && editId.value !== null) {
-    // Edit existing note
-    try {
+  try {
+    if (isEdit.value && editId.value !== null) {
+      // Edit existing note
       const res = await fetch(`${BASE_API}/notes/${editId.value}`, {
         method: 'PATCH',
         body: formData
       });
+      
       if (!res.ok) {
-        const err = await res.json();
-        modalError.value = err.message || 'Failed to update note.';
-        return;
+        let errorData;
+        try {
+          errorData = await res.json();
+        } catch {
+          errorData = { message: res.statusText || 'Failed to update note' };
+        }
+        
+        throw {
+          status: res.status,
+          message: errorData.message || errorData.error || 'Failed to update note'
+        };
       }
-      await fetchNotes();
-    } catch (e: any) {
-      modalError.value = e.message || 'Failed to update note.';
-      return;
-    }
-  } else {
-    // Add new note
-    try {
+    } else {
+      // Add new note
       const res = await fetch(`${BASE_API}/notes`, {
         method: 'POST',
         body: formData
       });
+      
       if (!res.ok) {
-        const err = await res.json();
-        modalError.value = err.message || 'Failed to add note.';
-        return;
+        let errorData;
+        try {
+          errorData = await res.json();
+        } catch {
+          errorData = { message: res.statusText || 'Failed to add note' };
+        }
+        
+        throw {
+          status: res.status,
+          message: errorData.message || errorData.error || 'Failed to add note'
+        };
       }
-      await fetchNotes();
-    } catch (e: any) {
-      modalError.value = e.message || 'Failed to add note.';
-      return;
     }
+    
+    await fetchNotes();
+    closeModal(true);
+  } catch (error: any) {
+    // The modal will handle displaying this error
+    throw error;
   }
-  closeModal();
 }
 
-// Delete note via API
+// Delete note via API with enhanced error handling
 function showDeleteConfirm(note: { id: number; title: string }) {
   confirmDeleteNote.value = note;
 }
@@ -202,13 +282,32 @@ function cancelDelete() {
 
 async function deleteNoteConfirmed() {
   if (!confirmDeleteNote.value) return;
-  errorMessage.value = '';
+  
   try {
-    const res = await fetch(`${BASE_API}/notes/${confirmDeleteNote.value.id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Failed to delete note');
+    const res = await fetch(`${BASE_API}/notes/${confirmDeleteNote.value.id}`, { 
+      method: 'DELETE' 
+    });
+    
+    if (!res.ok) {
+      let errorData;
+      try {
+        errorData = await res.json();
+      } catch {
+        errorData = { message: res.statusText || 'Failed to delete note' };
+      }
+      
+      throw {
+        status: res.status,
+        message: errorData.message || errorData.error || 'Failed to delete note'
+      };
+    }
+    
+    if (notes.value.length === 1 && pagination.value.page > 1) {
+      pagination.value.page--; // Adjust page if last note is deleted
+    }
     await fetchNotes();
-  } catch (e: any) {
-    errorMessage.value = e.message || 'Failed to delete note.';
+  } catch (error: any) {
+    errorMessage.value = handleApiError(error, 'delete note');
   } finally {
     confirmDeleteNote.value = null;
   }
@@ -288,11 +387,77 @@ watch(() => pagination.value.page, (newPage, oldPage) => {
 }
 
 .note-list-wrapper {
-  min-height: 400px; /* Adjust as needed for your layout */
+  min-height: 400px;
   max-height: 60vh;
   overflow-y: auto;
   margin-bottom: 2rem;
-  /* Ensures space for pagination at the bottom */
+}
+
+.no-notes-message {
+  text-align: center;
+  color: #777;
+  font-size: 16px;
+  margin-top: 20px;
+  background-color: #f9f9f9;
+  padding: 20px;
+}
+
+.error-message-container {
+  margin-bottom: 1rem;
+}
+
+.error-message {
+  background: #fed7d7;
+  border: 1px solid #feb2b2;
+  border-radius: 8px;
+  padding: 16px;
+  color: #c53030;
+  font-size: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.error-text-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.error-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.error-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.error-text {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.retry-btn {
+  align-self: center;
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid #c53030;
+  border-radius: 4px;
+  background: transparent;
+  color: #c53030;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.retry-btn:hover {
+  background: #c53030;
+  color: white;
 }
 
 @media (max-width: 600px) {
@@ -321,6 +486,15 @@ watch(() => pagination.value.page, (newPage, oldPage) => {
     margin-left: 0;
     margin-top: 8px;
     justify-content: flex-end;
+  }
+  
+  .error-message {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .error-content {
+    gap: 8px;
   }
 }
 
@@ -449,15 +623,5 @@ watch(() => pagination.value.page, (newPage, oldPage) => {
   color: #666;
   font-size: 13px;
   word-break: break-all;
-}
-
-.error-message {
-  color: #d32f2f;
-  background: #fff0f0;
-  border: 1px solid #f8d7da;
-  border-radius: 4px;
-  padding: 10px 16px;
-  margin-bottom: 1rem;
-  font-size: 15px;
 }
 </style>

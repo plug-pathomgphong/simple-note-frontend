@@ -32,7 +32,7 @@
     <!-- Next -->
     <button
       class="px-3 py-1 border rounded disabled:opacity-50"
-      :disabled="modelValue === totalPages"
+      :disabled="modelValue === totalPages || totalPages === 0"
       @click="$emit('update:modelValue', modelValue + 1)"
     >
       Next
