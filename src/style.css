@@ -60,6 +60,10 @@ button:focus-visible {
   padding: 2em;
 }
 
+button:disabled{
+  @apply !bg-gray-300 !text-gray-500 !cursor-not-allowed;
+}
+
 #app {
   width: 100%;
   max-width: 1280px;
@@ -80,3 +84,5 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+
