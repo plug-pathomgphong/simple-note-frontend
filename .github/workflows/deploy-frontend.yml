@@ -31,7 +31,7 @@ jobs:
           npm install
 
       - name: 🧪 Run tests
-        run: npm run test:ci
+        run: npm run test
 
       - name: 🛠️ Build Vue 3 app with Vite
         run: |
