@@ -29,9 +29,12 @@ jobs:
         run: |
           rm -rf node_modules package-lock.json
           npm install
-
+          
       - name: 🧪 Run tests
         run: npm run test
+      
+      - name: 🧪🧪 Run E2E tests with mock API
+        run: npx playwright test
 
       - name: 🛠️ Build Vue 3 app with Vite
         run: |
