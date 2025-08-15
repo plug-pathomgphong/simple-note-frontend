@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
   test: {
+    exclude: ['node_modules', 'tests/e2e/**'],
     globals: true,
     environment: 'jsdom',
     coverage: {

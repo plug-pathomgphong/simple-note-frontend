@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import NoteView from './NoteView.vue';
+import NoteView from '../../src/components/NoteView.vue';
 
 const mockNotes = [
   { id: 1, title: 'Note 1', content: 'Content 1', image: '' },
