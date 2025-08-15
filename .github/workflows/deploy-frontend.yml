@@ -32,9 +32,13 @@ jobs:
           
       - name: 🧪 Run tests
         run: npm run test
-      
+        
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+        
       - name: 🧪🧪 Run E2E tests with mock API
-        run: npm run test:e2e
+        run: npx playwright test
+        # run: npm run test:e2e
 
       - name: 🛠️ Build Vue 3 app with Vite
         run: |
