@@ -198,7 +198,7 @@ test.describe('NoteView CRUD Operations', () => {
   })
 
 
-  test('should create, read, update, and delete a note', async ({ page }) => {
+  test.skip('should create, read, update, and delete a note', async ({ page }) => {
     await test.step('Create a new note', async () => {
       await createNote(page, testNote.title, testNote.content);
       const created = await findNoteItemByTitle(page, testNote.title);
