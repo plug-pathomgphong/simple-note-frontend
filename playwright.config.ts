@@ -32,7 +32,7 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'bun run dev', // หรือ yarn dev
+    command: process.env.CI ? 'npm run dev' : 'bun run dev', // หรือ yarn dev
     port: 5173,
     timeout: 120 * 1000,
     reuseExistingServer: !process.env.CI,
